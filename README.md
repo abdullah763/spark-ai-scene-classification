@@ -38,15 +38,37 @@ The task is non-trivial because some categories have strong visual overlap, espe
 **Dataset:** Intel Image Classification  
 **Kaggle slug:** `puneet6060/intel-image-classification`
 
-The labeled `seg_train` split was used as the training source and divided deterministically into training and validation subsets. The provided labeled `seg_test` split was kept untouched until final evaluation.
+### Why this dataset?
 
-### Dataset Audit
+Intel Image Classification was selected because it provides a sufficiently large, real-world multiclass computer-vision problem while remaining practical under the assessment's time and compute constraints. Its six scene categories are reasonably balanced but contain meaningful visual ambiguity—particularly mountain/glacier and buildings/street—which makes it suitable for comparing a simple CNN against transfer learning and for performing meaningful error analysis.
+
+### Label format
+
+Labels are encoded through the dataset directory structure, with one folder per class:
+
+```text
+buildings/
+forest/
+glacier/
+mountain/
+sea/
+street/
+```
+
+The pipeline loads these folder-based categorical labels using PyTorch `ImageFolder`.
+
+The provided labeled `seg_train` split was used as the training source and divided deterministically into training and validation subsets. The provided labeled `seg_test` split was kept untouched until final evaluation.
+
+### Dataset split
 
 | Split | Images |
 |---|---:|
-| Training source | 14,034 |
+| Training | 11,928 |
+| Validation | 2,106 |
 | Final test | 3,000 |
 | Total labeled images | 17,034 |
+
+### Dataset audit
 
 Training-source class distribution:
 
@@ -70,6 +92,12 @@ Audit findings:
 
 ![Class distribution](outputs/plots/class_distribution.png)
 
+### Potential label noise
+
+Qualitative inspection identified at least one potentially inconsistent test sample, including an urban vehicle scene located in the `glacier` directory.
+
+Because the provided test set was intentionally preserved as an untouched final evaluation set, suspected labels were **documented rather than manually corrected or removed after evaluation**. This avoids post-hoc modification of the test set and keeps the reported metrics reproducible.
+
 ---
 
 ## Data Preparation
@@ -81,7 +109,7 @@ The pipeline includes:
 - random augmentation for training
 - deterministic preprocessing for validation and test
 - ImageNet normalization for MobileNetV3
-- deterministic train/validation splitting
+- deterministic stratified train/validation splitting
 - untouched final test evaluation
 
 This keeps model comparison fair and prevents test-set leakage.
@@ -145,7 +173,7 @@ The final evaluation used the untouched 3,000-image test split.
 
 MobileNetV3-Small improved macro-F1 by approximately **10.7 percentage points** over the from-scratch baseline.
 
-### Final Model Error Rate by Class
+### Final model error rate by class
 
 | Class | Error Rate |
 |---|---:|
@@ -176,7 +204,7 @@ The final MobileNetV3-Small model produced:
 - mean confidence on incorrect predictions: **0.7465**
 - **59** incorrect predictions with confidence >= 0.90
 
-### Most Common Confusion Pairs
+### Most common confusion pairs
 
 | True Class | Predicted Class | Count |
 |---|---|---:|
@@ -196,13 +224,15 @@ The main failure modes are visually reasonable:
 
 ![Common failure modes](outputs/error_analysis/common_failure_modes.png)
 
-### High-Confidence Misclassifications
+### High-confidence misclassifications
 
 High-confidence mistakes were inspected separately because they are useful for identifying model blind spots and potential dataset issues.
 
 ![Highest-confidence misclassifications](outputs/error_analysis/highest_confidence_misclassifications.png)
 
-Manual inspection also revealed at least one potentially inconsistent test label where an urban vehicle scene appears under the `glacier` class. This demonstrates why qualitative inspection is important alongside aggregate metrics.
+### Improvement hypotheses from observed failures
+
+The dominant mountain/glacier errors suggest that higher-resolution inputs and augmentations that preserve fine texture may help distinguish snow-covered terrain from glacier structures. Street/building confusions may benefit from features that better preserve broader spatial context. Confidence calibration could also reduce the impact of high-confidence mistakes.
 
 ---
 
@@ -363,7 +393,14 @@ Current API test result:
 6 passed
 ```
 
-The tests cover core API health and request-validation behavior.
+The tests cover:
+
+- health endpoint behavior
+- valid prediction response
+- invalid MIME type
+- invalid image data
+- empty upload
+- unavailable-model handling
 
 ---
 
@@ -387,23 +424,31 @@ The tests cover core API health and request-validation behavior.
 - Visually overlapping classes remain difficult, especially mountain vs glacier
 - A small number of labels may be noisy or semantically ambiguous
 - Hyperparameter tuning was intentionally limited because of assessment time and compute constraints
+- The learning-rate sweep was performed with the MobileNet backbone frozen, then the selected learning rate was reused for final full-network fine-tuning
 - Images are relatively low resolution
 - Confidence calibration was analyzed but not explicitly optimized
 
 ---
 
-## Future Improvements
+## With Additional Compute
 
-With additional time and compute, I would explore:
+With additional compute, I would scale training using:
 
-1. longer controlled fine-tuning with early stopping
-2. stronger augmentation policies
-3. higher-resolution inputs
-4. EfficientNet or a larger MobileNet variant
-5. probability calibration
-6. systematic review of suspected noisy labels
-7. robustness testing under blur, lighting, crop, and distribution shifts
-8. experiment tracking and CI/CD for automated model validation
+- mixed-precision GPU training
+- higher-resolution inputs
+- larger batch sizes where GPU memory permits
+- longer fine-tuning with early stopping
+- learning-rate scheduling
+- a broader but still controlled hyperparameter search
+- multiple controlled runs to estimate training variance
+
+I would also explore:
+
+- larger MobileNet or EfficientNet variants
+- stronger augmentation policies
+- systematic review of ambiguous/noisy labels
+- probability calibration
+- robustness testing under blur, lighting changes, crops, compression, and other distribution shifts
 
 ---
 

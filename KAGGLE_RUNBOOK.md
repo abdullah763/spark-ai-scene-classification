@@ -1,92 +1,279 @@
-# Kaggle execution runbook
+# Kaggle Runbook
 
-Use a GPU accelerator (T4 is sufficient). Add the public dataset `puneet6060/intel-image-classification` to the notebook.
+This runbook documents the compact sequence used to reproduce the training and evaluation workflow for the Spark AI scene-classification assessment.
 
-## 0. Confirm paths
+## Dataset
+
+Use the Kaggle dataset:
+
+```text
+puneet6060/intel-image-classification
+```
+
+In the current Kaggle mount layout used for this assessment, the dataset root was:
+
+```text
+/kaggle/input/datasets/puneet6060/intel-image-classification
+```
+
+If Kaggle mounts the dataset differently, locate `seg_train` and `seg_test` first and update `DATA_ROOT`.
+
+---
+
+## 1. Environment and Dataset Check
 
 ```python
 from pathlib import Path
-root = Path('/kaggle/input/intel-image-classification')
-print(list(root.iterdir()))
-print((root/'seg_train'/'seg_train').exists())
-print((root/'seg_test'/'seg_test').exists())
+import torch
+
+print("CUDA available:", torch.cuda.is_available())
+if torch.cuda.is_available():
+    print("GPU:", torch.cuda.get_device_name(0))
+
+INPUT_ROOT = Path("/kaggle/input")
+
+for p in INPUT_ROOT.rglob("seg_train"):
+    print("Found seg_train at:", p)
+
+for p in INPUT_ROOT.rglob("seg_test"):
+    print("Found seg_test at:", p)
 ```
 
-## 1. Put project code in `/kaggle/working/spark-ai-scene-classification`
+Expected accelerator for this run:
 
-Either clone the GitHub repo after it is created or upload this project zip and unzip it.
+```text
+Tesla T4
+```
+
+---
+
+## 2. Clone Repository
 
 ```bash
-%cd /kaggle/working/spark-ai-scene-classification
-!python -m pip install -q onnx onnxruntime
+git clone https://github.com/abdullah763/spark-ai-scene-classification.git
+cd /kaggle/working/spark-ai-scene-classification
 ```
 
-## 2. Dataset audit
+---
+
+## 3. Dataset Audit
 
 ```bash
-!python -m src.audit --data-root /kaggle/input/intel-image-classification
+python -m src.audit \
+  --data-root /kaggle/input/datasets/puneet6060/intel-image-classification
 ```
 
-## 3. Baseline
+Audit output is saved under:
+
+```text
+outputs/metrics/
+outputs/plots/
+```
+
+Observed dataset statistics:
+
+```text
+Training source: 14,034 images
+Final test:      3,000 images
+Corrupt images:  0
+```
+
+The deterministic split used during training produced:
+
+```text
+Training:   11,928
+Validation:  2,106
+Test:        3,000
+```
+
+---
+
+## 4. Train Baseline SimpleCNN
 
 ```bash
-!python -m src.train --data-root /kaggle/input/intel-image-classification --model simple_cnn --epochs 5 --learning-rate 0.001 --batch-size 64 --num-workers 2
+python -m src.train \
+  --data-root /kaggle/input/datasets/puneet6060/intel-image-classification \
+  --model simple_cnn \
+  --epochs 5 \
+  --learning-rate 0.001 \
+  --batch-size 64 \
+  --num-workers 2
 ```
 
-## 4. Basic tuning
+Best observed validation macro-F1:
+
+```text
+0.8147
+```
+
+---
+
+## 5. Tune MobileNetV3-Small
 
 ```bash
-!python -m src.tune --data-root /kaggle/input/intel-image-classification --learning-rates 0.001 0.0003 0.0001 --epochs-per-trial 2 --batch-size 64 --num-workers 2
+python -m src.tune \
+  --data-root /kaggle/input/datasets/puneet6060/intel-image-classification \
+  --learning-rates 0.001 0.0003 0.0001 \
+  --epochs-per-trial 2 \
+  --batch-size 64 \
+  --num-workers 2
 ```
 
-Read:
+Observed tuning results:
 
-```python
-import pandas as pd
-pd.read_csv('outputs/tuning/tuning_results.csv')
+```text
+0.001  -> 0.9016 validation macro-F1
+0.0003 -> 0.8944
+0.0001 -> 0.8828
 ```
 
-## 5. Final MobileNet
+Selected learning rate:
 
-Replace `<LR>` with the best tuning learning rate.
+```text
+0.001
+```
+
+---
+
+## 6. Train Final MobileNetV3-Small
 
 ```bash
-!python -m src.train --data-root /kaggle/input/intel-image-classification --model mobilenet_v3_small --epochs 4 --learning-rate <LR> --batch-size 64 --num-workers 2 --checkpoint models/mobilenet_v3_small_best.pth
+python -m src.train \
+  --data-root /kaggle/input/datasets/puneet6060/intel-image-classification \
+  --model mobilenet_v3_small \
+  --epochs 4 \
+  --learning-rate 0.001 \
+  --batch-size 64 \
+  --num-workers 2 \
+  --checkpoint models/mobilenet_v3_small_best.pth
 ```
 
-If four epochs are clearly still improving and time remains, allow one additional epoch. Do not start architecture experiments.
+Best observed validation macro-F1:
 
-## 6. Evaluate BOTH models
+```text
+0.9217
+```
+
+---
+
+## 7. Evaluate Both Models
 
 ```bash
-!python -m src.evaluate --data-root /kaggle/input/intel-image-classification --checkpoint models/simple_cnn_best.pth
-!cp outputs/metrics/simple_cnn_test_metrics.json outputs/metrics/baseline_test_metrics.json
+python -m src.evaluate \
+  --data-root /kaggle/input/datasets/puneet6060/intel-image-classification \
+  --checkpoint models/simple_cnn_best.pth \
+  --batch-size 64 \
+  --num-workers 2
 
-!python -m src.evaluate --data-root /kaggle/input/intel-image-classification --checkpoint models/mobilenet_v3_small_best.pth
+python -m src.evaluate \
+  --data-root /kaggle/input/datasets/puneet6060/intel-image-classification \
+  --checkpoint models/mobilenet_v3_small_best.pth \
+  --batch-size 64 \
+  --num-workers 2
 ```
 
-## 7. Error analysis on final model
+Final test results:
+
+```text
+SimpleCNN:
+accuracy  = 0.8127
+macro-F1  = 0.8147
+
+MobileNetV3-Small:
+accuracy  = 0.9200
+macro-F1  = 0.9217
+```
+
+---
+
+## 8. Error Analysis
 
 ```bash
-!python -m src.error_analysis --predictions outputs/metrics/mobilenet_v3_small_test_predictions.csv --top-n 24
+python -m src.error_analysis \
+  --predictions outputs/metrics/mobilenet_v3_small_test_predictions.csv \
+  --top-n 20
 ```
 
-## 8. Export final model to ONNX
+Key observed failure modes:
+
+```text
+mountain -> glacier
+glacier -> mountain
+street -> buildings
+buildings -> street
+```
+
+The repository includes both quantitative CSV outputs and qualitative error-analysis figures.
+
+---
+
+## 9. Export Final Model to ONNX
+
+Install export/runtime dependencies if needed:
 
 ```bash
-!python -m src.export_onnx --checkpoint models/mobilenet_v3_small_best.pth --output models/best_model.onnx
+pip install onnx onnxruntime
 ```
 
-## 9. Download artifacts
+Export:
 
-At minimum preserve:
+```bash
+python -m src.export_onnx \
+  --checkpoint models/mobilenet_v3_small_best.pth \
+  --output models/best_model.onnx
+```
 
-- `models/best_model.onnx`
-- `models/class_names.json`
-- `models/mobilenet_v3_small_best.pth` (release artifact, not needed by Render)
-- `outputs/metrics/`
-- `outputs/plots/`
-- `outputs/error_analysis/`
-- `outputs/tuning/`
+Observed export validation:
 
-Commit the ONNX model, class names, plots, metrics, and tuning CSV to GitHub. Do not commit the full raw dataset.
+```text
+max_abs_diff = 2.14577e-06
+```
+
+Deployment artifacts:
+
+```text
+models/best_model.onnx
+models/class_names.json
+```
+
+---
+
+## Deployment
+
+The final public service is deployed on **Railway** using Docker.
+
+Public API:
+
+```text
+https://spark-ai-scene-classification-production.up.railway.app
+```
+
+Health endpoint:
+
+```text
+https://spark-ai-scene-classification-production.up.railway.app/health
+```
+
+Swagger UI:
+
+```text
+https://spark-ai-scene-classification-production.up.railway.app/docs
+```
+
+The production service uses ONNX Runtime and does not require PyTorch.
+
+---
+
+## Final Notes
+
+The assessment workflow intentionally favors:
+
+- reproducible data splits
+- clean model comparison
+- controlled tuning
+- untouched final test evaluation
+- qualitative and quantitative error analysis
+- lightweight production inference
+- deployment readiness
+
+No additional retraining is required for the submitted version.
