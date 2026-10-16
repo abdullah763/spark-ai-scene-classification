@@ -287,20 +287,32 @@ curl -X POST \
   -F "file=@sample.jpg" \
   http://127.0.0.1:8000/predict
 ```
+### Example Live Response
 
-Example response structure:
+Example response from a single request to the live Railway deployment:
 
 ```json
 {
-  "predicted_class": "forest",
-  "confidence": 0.97,
+  "predicted_class": "mountain",
+  "confidence": 0.9000465869903564,
   "top3": [
-    {"class": "forest", "confidence": 0.97},
-    {"class": "mountain", "confidence": 0.02},
-    {"class": "glacier", "confidence": 0.01}
-  ]
+    {
+      "class": "mountain",
+      "confidence": 0.9000465869903564
+    },
+    {
+      "class": "glacier",
+      "confidence": 0.0997079610824585
+    },
+    {
+      "class": "sea",
+      "confidence": 0.00016264538862742484
+    }
+  ],
+  "latency_ms": 390.55
 }
 ```
+latency_ms represents the inference latency observed for this individual live request. It should not be interpreted as average latency, p95/p99 latency, or a formal performance benchmark.
 
 The model is loaded once when the application starts.
 
