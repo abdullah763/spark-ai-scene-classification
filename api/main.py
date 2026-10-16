@@ -9,9 +9,11 @@ from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
 
 from src.inference import ONNXSceneClassifier
-from src.utils import setup_logging
 
-setup_logging()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
 LOGGER = logging.getLogger(__name__)
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
