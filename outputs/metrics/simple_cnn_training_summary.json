@@ -1,0 +1,11 @@
+{
+  "model": "simple_cnn",
+  "checkpoint": "/kaggle/working/spark-ai-scene-classification/models/simple_cnn_best.pth",
+  "best_val_macro_f1": 0.8147390438677099,
+  "elapsed_seconds": 199.687338758,
+  "epochs": 5,
+  "learning_rate": 0.001,
+  "batch_size": 64,
+  "freeze_backbone": false,
+  "device": "cuda"
+}

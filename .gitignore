@@ -5,5 +5,6 @@ __pycache__/
 .pytest_cache/
 data/
 models/*.pth
-outputs/error_analysis/*.png
 # Keep the final ONNX model and class_names.json trackable for deployment.
+spark_ml_artifacts.zip
+outputs/tuning/*.pth

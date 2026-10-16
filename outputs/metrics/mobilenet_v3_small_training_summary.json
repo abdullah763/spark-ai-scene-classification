@@ -1,0 +1,11 @@
+{
+  "model": "mobilenet_v3_small",
+  "checkpoint": "models/mobilenet_v3_small_best.pth",
+  "best_val_macro_f1": 0.9216643282228153,
+  "elapsed_seconds": 157.72940901800007,
+  "epochs": 4,
+  "learning_rate": 0.001,
+  "batch_size": 64,
+  "freeze_backbone": false,
+  "device": "cuda"
+}

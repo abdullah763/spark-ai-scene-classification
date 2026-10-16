@@ -1,0 +1,8 @@
+{
+  "total_predictions": 3000,
+  "total_errors": 240,
+  "error_rate": 0.08,
+  "mean_confidence_correct": 0.9524307411433994,
+  "mean_confidence_incorrect": 0.7465176299214363,
+  "high_confidence_errors_ge_0_90": 59
+}

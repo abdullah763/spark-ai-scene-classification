@@ -77,9 +77,17 @@ def main():
                 ax.axis("off")
             except OSError:
                 ax.set_title("Image unavailable")
-        fig.suptitle("Highest-Confidence Misclassifications", fontsize=14)
-        fig.tight_layout()
-        fig.savefig(out_errors / "highest_confidence_misclassifications.png", dpi=170)
+        fig.suptitle(
+            "Highest-Confidence Misclassifications",
+            fontsize=16,
+            y=0.995,
+        )
+        fig.tight_layout(rect=[0, 0, 1, 0.975])
+        fig.savefig(
+            out_errors / "highest_confidence_misclassifications.png",
+            dpi=180,
+            bbox_inches="tight",
+        )
         plt.close(fig)
 
     print(json.dumps(confidence_summary, indent=2))

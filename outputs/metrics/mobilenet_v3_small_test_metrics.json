@@ -1,0 +1,9 @@
+{
+  "model_name": "mobilenet_v3_small",
+  "checkpoint": "models/mobilenet_v3_small_best.pth",
+  "test_images": 3000,
+  "accuracy": 0.92,
+  "macro_precision": 0.9219489241445545,
+  "macro_recall": 0.922108898827959,
+  "macro_f1": 0.9217478656931225
+}

@@ -1,0 +1,8 @@
+{
+  "learning_rate": 0.001,
+  "epochs": 2,
+  "backbone": "frozen",
+  "best_val_macro_f1": 0.901607789958668,
+  "elapsed_seconds": 76.21692484300013,
+  "checkpoint": "/kaggle/working/spark-ai-scene-classification/outputs/tuning/mobilenet_frozen_lr_0.001.pth"
+}

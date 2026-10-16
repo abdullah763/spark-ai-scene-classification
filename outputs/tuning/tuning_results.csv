@@ -1,0 +1,4 @@
+learning_rate,epochs,backbone,best_val_macro_f1,elapsed_seconds,checkpoint
+0.001,2,frozen,0.901607789958668,76.21692484300013,/kaggle/working/spark-ai-scene-classification/outputs/tuning/mobilenet_frozen_lr_0.001.pth
+0.0003,2,frozen,0.8943842324032705,75.49588298599997,/kaggle/working/spark-ai-scene-classification/outputs/tuning/mobilenet_frozen_lr_0.0003.pth
+0.0001,2,frozen,0.8827877326435195,77.1365472110001,/kaggle/working/spark-ai-scene-classification/outputs/tuning/mobilenet_frozen_lr_0.0001.pth
